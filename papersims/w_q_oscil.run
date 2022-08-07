@@ -1,0 +1,84 @@
+#!/usr/local/bin/tclsh8.3
+
+if [expr ![llength $argv]] {
+puts "usage: <progname> linkrate web ecn(1/0) reverse(1/0) queue_in_bytes(true/false)"
+puts "Using defaults (rate=15, web=5, ecn=1, reverse=0 qib=false for these parameters"
+}
+
+if [expr 1[lindex $argv 0]!=1 ] {
+	set rate [lindex $argv 0] 
+	} else {
+	puts "using 15Mb/s"
+	set rate 15
+	}
+
+if [expr 1[lindex $argv 1]!=1 ] {
+	set web [lindex $argv 1]
+	} else {
+	puts "Using 5 web flows per second"
+	set web 5
+	}
+
+if [expr 1[lindex $argv 2]!=1 ] {
+	set ecn [lindex $argv 2]
+	} else {
+	puts "Using ecn"
+	set ecn 1
+	}
+
+if [expr 1[lindex $argv 3]!=1] {
+	set reverse [lindex $argv 3]
+	} else {
+	puts "Not using reverse traffic"
+	set reverse 0
+	}
+
+if [string equal "0[lindex $argv 4]" "0"] {
+	puts "Using a packet queue"
+	set bytequeue false
+	} else {
+	set bytequeue [lindex $argv 4]
+	} 	
+
+
+if [expr 1[lindex $argv 5]!=1] {
+	set intervals [lindex $argv 5]
+	} else {
+	set intervals 10 ; #check if this is 100..
+	} 
+
+if [expr 1[lindex $argv 6]!=1] {
+	set minthresh [lindex $argv 6]
+	} else {
+	set minthresh 5
+	} 
+
+if [expr 1[lindex $argv 7]!=1] {
+	set maxthresh [lindex $argv 7]
+	} else {
+	set maxthresh 15
+	} 
+
+if [expr 1[lindex $argv 8]!=1] {
+	set adaptive [lindex $argv 8]
+	} else {
+	set adaptive 1
+	} 
+
+if [expr 1[lindex $argv 9]!=1] {
+	set q_weight [lindex $argv 9]
+	} else {
+	set q_weight 0
+	} 
+
+
+catch {exec rm out.total}
+
+    foreach flows {100} {	
+      catch {exec rm out.stats}
+	puts "Using a RED controller and w_q_oscil.tcl \n"
+	eval "exec ns w_q_oscil.tcl $flows $rate $ecn $reverse $web $bytequeue $intervals $minthresh $maxthresh $adaptive $q_weight > out.stats"
+      eval "exec cat out.stats >> out.total"
+    }
+  
+

@@ -1,0 +1,90 @@
+#!/usr/local/bin/tclsh8.3
+
+#./single1.run 15(link_rate) 5(web_flows) 1(ecn) 1(reverse) 1(adaptive) 1(cautious) 1(random) RED 1(trial_no)
+
+if [expr ![llength $argv]] {
+puts "usage: <progname> linkrate web_traffic ecn(boolean) reverse_traffic(boolean) minthresh maxthresh adaptive(boolean) cautious(boolean) random(boolean) control_type trial_no(int)"
+}
+
+# puts "Lindex is: [lindex $argv 0]"
+
+if [expr [lindex $argv 0]0!=0] {
+	set rate [lindex $argv 0] 
+	} else {
+	puts "using 15Mb/s"
+	set rate 15
+	}
+
+if [expr [lindex $argv 1]0!=0] {
+	set web [lindex $argv 1]
+	} else {
+	puts "Using 5 web flows per second"
+	set web 5
+	}
+
+if [expr [lindex $argv 2]0!=0] {
+	set ecn [lindex $argv 2]
+	} else {
+	puts "Not using ecn"
+	set ecn 0
+	}
+
+if [expr [lindex $argv 3]0!=0] {
+	set reverse [lindex $argv 3]
+	} else {
+	puts "Not using reverse traffic"
+	set reverse 0
+	}
+
+if [expr [lindex $argv 4]0!=0] {
+	set adaptive [lindex $argv 4]
+	} else {
+	puts "Not using adaptive RED"
+	set adaptive 0
+	}
+if [expr [lindex $argv 5]0!=0] {
+	set cautious [lindex $argv 5]
+	} else {
+	puts "Setting cautious to 0"
+	set cautious 0
+	}
+if [expr [lindex $argv 6]0==0] {
+	set random [lindex $argv 6]
+	} else {
+	puts "Setting random delay to 1"
+	set random 1
+	}	
+if [string equal "0[lindex $argv 7]" "0"] {
+	puts "Using RED controller"
+	set control_type RED
+	} else {
+	set control_type [lindex $argv 7]
+	} 
+if [expr [llength $argv] > 8 && $random==1 ] {
+	set run [lindex $argv 8]
+	puts "Doing run $run"
+} else {
+	set run 0
+}
+
+if {$run} {
+set out run_$run.rate_$rate.web_$web.ecn_$ecn.reverse_$reverse.adaptive_$adaptive.cautious_$cautious.random_$random.controltype_$control_type
+} else {
+set out fixed_$rate.web_$web.ecn_$ecn.reverse_$reverse.adaptive_$adaptive.cautious_$cautious.random_$random.controltype_$control_type
+}
+
+set linterm 100
+
+catch {exec rm $out.total}
+set out_chan [open "$out.total" w]
+puts $out_chan "Throughput-Delay Stats"
+close $out_chan
+
+foreach minthresh {5 10 15 25 50 100 150 300} {
+	set maxthresh [expr 3 * $minthresh]
+	foreach flows {5 10 20 30 40 50 60 70 80 90 100} {
+		catch {exec rm $out.stats}
+      		eval "exec ./ns single1.tcl $flows $rate $linterm $ecn $minthresh $maxthresh $reverse $web $adaptive $cautious $random $control_type > $out.stats"
+		eval "exec cat $out.stats >> $out.total"
+	}
+}

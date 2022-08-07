@@ -1,0 +1,179 @@
+eval 'exec perl -S $0 ${1+"$@"}'		# -*-perl-*-
+    if 0;
+
+require 5.001;
+
+($progname) = ($0 =~ m!([^/]+)$!);
+sub usage {
+    print STDERR <<END;
+usage: $progname [options] [trace files...]
+
+options:
+    -a		plot acks
+    -s SCALE    scale TCP sequence numbers by SCALE
+    -n FACTOR	scale flow number by FACTOR
+    -m MODULUS  treat TCP sequence numbers as mod MODULUS
+    -q		show queueing delay by connecting lines
+    -l		show packet length
+    -t TITLE    title of test
+    -e		plot ecn flags
+    -d		plot only drops and ECN marks
+
+Traditional ``wrapping'' ns plots (as called from the test scripts)
+can be generated with -s 0.01 -m 90.
+END
+    exit 1;
+};
+$usage = "usage: $progname [-a] [trace files...]\n";
+
+use Getopt::Std;
+#require 'getopts.pl';
+getopts('aeds:m:n:qlt:') || usage;
+#&Getopts('aeds:m:n:qlt:') || usage;
+
+$c = 0;
+@p = @pc = @pg = @a = @ac = @ae = @d = @lu = @ld = ();
+%q_time_seg = ();
+$scale = defined($opt_s) ? $opt_s : 1;
+$modulus = defined($opt_m) ? $opt_m : 2 ** 31;
+$flow_factor = defined($opt_n) ? $opt_n : 1;
+$plot_acks = defined($opt_a);
+$plot_ecn = defined($opt_e);
+$plot_drops = defined($opt_d);
+
+$file = $acks = '';
+
+sub translate_point {
+    my($time, $seq, $flow) = @_;
+    return ($time, $flow * $flow_factor + ($seq % $modulus) * $scale);
+}
+
+while (<>) {
+    $dfile = $ARGV;
+    @F = split;
+    /testName/ && ($file = $F[2], next);
+    /^[\+-] / && do {
+	$c = $F[7] if ($c < $F[7]);
+	$is_ack = ($F[4] eq 'ack');
+	$is_ecn = ($F[6] =~ /E/);
+	$is_cong = ($F[6] =~ /A/);
+	$is_echo = ($F[6] =~ /C/); 
+	next if ($is_ack && !$plot_acks);
+
+	($x, $y) = translate_point(@F[1, 10, 7]);
+	if (defined($opt_q)) {
+	    if (/^\+/) {
+		$statement = undef;
+		$q_time_seg{$is_ack,$y} = $x;
+	    };
+	    $statement = "move $q_time_seg{$is_ack,$y} $y\ndraw $x $y\n"
+		if (/^\-/);
+	} else {
+	    $statement = "$x $y\n";
+	};
+	if (defined($statement)) {
+	    if ($plot_drops) { 
+		if ($is_ecn) {
+		    push(@pc, $statement);
+		};
+	    } else {
+                if ($is_ack) { 
+                    if ($is_ecn) {
+                        push(@ac, $statement);
+                    } else {
+                        push(@a, $statement);
+                    };
+                    if ($is_echo) {
+                        push(@ae, $statement);
+                    };
+                } else {
+                    if ($is_ecn) {
+                        push(@pc, $statement);
+                        } else {
+                            push(@p, $statement);
+                    };
+                    if ($is_cong) {
+                        push(@pg, $statement);
+                        }
+                };
+	    };
+	};
+	next;
+    };
+    /^d / && do {
+	($x, $y) = translate_point(@F[1, 10, 7]);
+	push(@d, "$x $y\n");
+	next;
+    };
+    /link-down/ &&	(push(@ld, $F[1]), next);
+    /link-up/ &&	(push(@lu, $F[1]), next);
+}	
+
+if ($file eq '') {
+	($file) = ($dfile =~ m!([^/]+)$!);
+}
+
+$title  = defined($opt_t) ? $opt_t : $file;
+print "TitleText: $title\n" .
+    "Device: Postscript\n" .
+    "BoundBox: true\n" .
+    "Ticks: true\n" .
+    (defined($opt_q) ? "" : "NoLines: true\n") .
+    "Markers: true\n" .
+    "XUnitText: time\n" .
+    "YUnitText: packets\n";
+
+@sorted_p = sort (@p);
+print "\n\"packets\n", @p;
+if (defined($pc[0])) {
+    @sorted_pc = sort (@pc);
+    print "\n\"ecn_packets\n", @pc[0..3], @sorted_pc;
+} else {
+    printf "\n\"skip-1\n0 1\n";
+}
+
+# insert dummy data sets so we get X's for marks in data-set 4
+if (!defined($a[0])) {
+    push(@a, "0 1\n");
+}
+if ($plot_acks) {
+    @sorted_a = sort (@a);
+    print "\n\"acks\n", @sorted_a;
+    if ($plot_ecn && defined($ac[0])) {
+	@sorted_ac = sort (@ac);
+	print "\n\"ecn-acks\n", @sorted_ac;
+    }
+    if ($plot_ecn && defined($ae[0])) {
+	@sorted_ae = sort (@ae);
+	print "\n\"echo-acks\n", @sorted_ae;
+    }
+} else {
+    printf "\n\"skip-2\n0 1\n";
+}
+
+#
+# Repeat the first line twice in the drops file because often we have only
+# one drop and xgraph won't print marks for data sets with only one point.
+#
+@sorted_d = sort (@d);
+print "\n\"drops\n", @d[0..3], @sorted_d;
+
+
+$c++;
+print "\n";
+foreach $i (@ld) {
+	print "\"link-down\n$i 0\n$i $c\n";
+}
+foreach $i (@lu) {
+	print "\"link-up\n$i 0\n$i $c\n";
+}
+
+if ($plot_ecn && defined($pg[0])) {
+    if (!defined($d[0])) {
+	printf "\n\"skip-3\n0 1\n";
+    }
+    @sorted_pg = sort (@pg);
+    print "\n\"cong_act_packets\n", @pg[0..3], @sorted_pg;
+} 
+
+exit 0;

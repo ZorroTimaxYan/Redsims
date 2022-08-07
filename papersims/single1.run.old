@@ -1,0 +1,78 @@
+#!/usr/local/bin/tclsh8.3
+
+if [expr ![llength $argv]] {
+puts "usage: <progname> linkrate web_traffic ecn(boolean) reverse_traffic(boolean) minthresh maxthresh adaptive(boolean)"
+}
+
+# puts "Lindex is: [lindex $argv 0]"
+
+if [expr [lindex $argv 0]0!=0] {
+	set rate [lindex $argv 0] 
+	} else {
+	puts "using 15Mb/s"
+	set rate 15
+	}
+
+if [expr [lindex $argv 1]0!=0] {
+	set web [lindex $argv 1]
+	} else {
+	puts "Using 5 web flows per second"
+	set web 5
+	}
+
+if [expr [lindex $argv 2]0!=0] {
+	set ecn [lindex $argv 2]
+	} else {
+	puts "Not using ecn"
+	set ecn 0
+	}
+
+if [expr [lindex $argv 3]0!=0] {
+	set reverse [lindex $argv 3]
+	} else {
+	puts "Not using reverse traffic"
+	set reverse 0
+	}
+
+if [expr [lindex $argv 4]0!=0] {
+	set minthresh [lindex $argv 4]
+	} else {
+	puts "Using 20 for minthresh"
+	set minthresh 20
+	}
+
+if [expr [lindex $argv 5]0!=0] {
+	set maxthresh [lindex $argv 5]
+	} else {
+	puts "Using 0 for maxthresh"
+	set maxthresh 0
+	}
+if [expr [lindex $argv 6]0!=0] {
+	set adaptive [lindex $argv 6]
+	} else {
+	puts "Not using adaptive RED"
+	set adaptive 0
+	}
+if [expr [lindex $argv 7]0!=0] {
+	set q_weight [lindex $argv 7]
+	} else {
+	puts "Setting RED's q_weight automatically"
+	set q_weight 0
+	}
+catch {exec rm out.total}
+
+foreach linterm {2 3 4 5 10 15 20 25 30 35 40 45 50} {
+# maxp:          50%                              2%
+# max_p ranging from 50% (linterm 2) down to 2% (linterm 50)
+	foreach flows {5 10 20 30 40 50 60 70 80 90 100} {
+		catch {exec rm out.stats}
+      		eval "exec ns single.tcl $flows $rate $linterm $ecn $minthresh $maxthresh $reverse $web $adaptive $q_weight > out.stats"
+		eval "exec cat out.stats >> out.total"
+	}
+}
+
+foreach flows {5 10 20 30 40 50 60 70 80 90 100} {
+	eval "exec ./tradeoff.pl flows=$flows out.total > $flows.data" 
+}
+eval "exec xgraph -bb -tk -m -x ave_queue -y util 5.data 10.data 20.data 30.data 40.data 50.data 60.data 70.data 80.data 90.data 100.data &"
+
