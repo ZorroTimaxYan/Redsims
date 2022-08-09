@@ -515,12 +515,12 @@ void REDQueue::updateMaxP_H(double new_ave, double now)
 	xk[7] = xk[6];
 	xk[6] = xk[5];
 	xk[5] = 10*pktcnt_pers_maxp/375-1;
-	xk[8] = 0.9;
+	xk[8] = 0.6;
 	double tempk = wk1[0]*xk[0];
 	for(int i=1; i<9; i++){
 		tempk += wk1[i]*xk[i];
 	}
-	edv_.cur_max_p = max(0, min(tempk, 0.5))*1.4;
+	edv_.cur_max_p = max(0, min(tempk, 0.5))*1.1;
 	for(int i = 0; i<9; i++){
 		wk[i] = wk1[i] + 100*ek[0]*xk[i];
 		wk1[i] = wk[i];
