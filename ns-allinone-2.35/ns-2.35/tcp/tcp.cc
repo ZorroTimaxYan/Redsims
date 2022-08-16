@@ -819,6 +819,13 @@ void TcpAgent::advanceby(int delta)
 
 int TcpAgent::command(int argc, const char*const* argv)
 {
+    if (argc == 2) {
+        if (strcmp(argv[1], "checkw") == 0) {
+            double mywind = cwnd_;
+            printf("窗口大小=%lf\n", mywind);
+            return (TCL_OK);
+        }
+    }
 	if (argc == 3) {
 		if (strcmp(argv[1], "advance") == 0) {
 			int newseq = atoi(argv[2]);

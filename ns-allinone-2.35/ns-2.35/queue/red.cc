@@ -210,6 +210,8 @@ void REDQueue::initialize_params()
 	} else if (edp_.q_w == -2.0) {
 		edp_.q_w = 1.0 - exp(-10.0/edp_.ptc);
 	}
+	printf("wq=%lf\n", edp_.q_w);
+	//cout << "wq=" << edp_.q_w << endl;
 	// printf("ptc: %7.5f bandwidth: %5.3f pktsize: %d\n", edp_.ptc, link_->bandwidth(), edp_.mean_pktsize);
         // printf("th_min_pkts: %7.5f th_max_pkts: %7.5f\n", edp_.th_min_pkts, edp_.th_max);
 	if (edp_.th_min_pkts == 0) {
@@ -278,8 +280,8 @@ void REDQueue::initParams()
 	edv_.cur_max_p = 1.0;
 	edv_.lastset = 0;
 
-E1=27.41746 ;
-D1=18.62524 ;
+E1=89.48349 ;
+D1=4.60072 ;
 	pktcnt_pers = 0;
 	pktcnt_pers_lp = 0;
 	pktcnt_pers_tp = 0;
@@ -288,7 +290,7 @@ D1=18.62524 ;
 	drop_cnt_pers = 0;
 	tp_cnt_pers = 0;
 	timeDelay_pers = 0;
-	static double temp[8] ={0.00000 , 0.00000 , 3.55066 , 4.04094 , 4.86654 , 5.64190 , 6.37054 , 7.13115 };
+	static double temp[8] ={5.57895 , 5.63293 , 5.19220 , 4.71527 , 4.14248 , 3.98733 , 3.58955 , 0.00000 };
 	scale = temp;
 	ek[0] = 0;
 	ek[1] = 0;
@@ -300,6 +302,7 @@ D1=18.62524 ;
 		wk1[i] = 0;
 	}
 	tin = -1;
+	cout.precision(6);
 	test_itv.open("/home/yzr/common/papersims/yzr_interval.txt",ios::out);
 	fperpkt1.open("/home/yzr/common/papersims/yzr_perpkt.txt",ios::out);
 	fperpkt2.open("/home/yzr/common/papersims/yzr_perpkt_d.txt",ios::out);
@@ -826,8 +829,8 @@ void REDQueue::enque(Packet* pkt)
 {
 	hdr_cmn* mych;
 	// double t = Scheduler::instance().clock();
-	// mych = hdr_cmn::access(pkt);
-	// hdr_ip* myiph = hdr_ip::access(pkt);
+	mych = hdr_cmn::access(pkt);
+	hdr_ip* myiph = hdr_ip::access(pkt);
 	// if(mych->ptype() == 0 )
 	// printf("sd=%d dd=%d time=%lf  ptype=%d\n",myiph->saddr(), myiph->daddr(), (t-mych->timestamp()),  mych->ptype());
 	pktcnt_pers_lp++;
@@ -836,14 +839,14 @@ void REDQueue::enque(Packet* pkt)
 	pktcnt_pers_maxp++;
 
 	//记录包之间时间间隔
-/*	double tnow = Scheduler::instance().clock();
+	double tnow = Scheduler::instance().clock();
 	if(mych->ptype() == 28){
 		if(tin != -1 ) {
 			
 			test_itv << tnow-tin << endl;
 		}
 		tin = tnow;	
-	}*/
+	}
 
 
 	/*
@@ -878,16 +881,17 @@ void REDQueue::enque(Packet* pkt)
 	 *  qib_ 默认是true,
 	*/
 
-/*	if(pared == 1){
+	if(pared == 1){
 		double enow = Scheduler::instance().clock();
-		if(enow > edv_.lastset + 0.1){
-			edv_.v_ave = estimator_P(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w, enow);
-		}		
+		if(enow > edv_.lastset + pertime_){
+			edv_.v_ave = estimator_P(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, 0.008, enow);
+		}
 	}else{
 		edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
-	}*/
+	}
 	
-	edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
+	//edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
+
 	//printf("v_ave: %6.4f (%13.12f) q: %d)\n", 
 	//	double(edv_.v_ave), double(edv_.v_ave), q_->length());
 	if (summarystats_) {

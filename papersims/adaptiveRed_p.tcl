@@ -208,11 +208,12 @@ TestSuite instproc plotQueue file {
     close $f4
     if {$quiet == "false"} {
         #puts aaa
-        exec xgraph -bb -tk -x time -y queue temp.queue &
-        exec xgraph -bb -tk -x time -y rate temp.dr &
-        exec xgraph -bb -tk -x time -y packets/s temp.tp &
-        exec xgraph -x time -y ms temp.td &
-        exec xgraph -x time -y packets temp.per &
+        # exec xgraph -bb -tk -x time -y queue temp.queue &
+        # exec xgraph -bb -tk -x time -y rate temp.dr &
+        # exec xgraph -bb -tk -x time -y packets/s temp.tp &
+        # exec xgraph -x time -y ms temp.td &
+        # exec xgraph -x time -y packets temp.per &
+        #exec xgraph -x time -y windows tcpwind.txt &
         if {$file == "transient" || $file == "transient1" || 
             $file == "transient2" } {
                 exec csh gnuplotB.com temp.queue $file
@@ -256,8 +257,17 @@ TestSuite instproc setTopo {} {
 
 }
 
+TestSuite instproc checkwind { tcp wfile time } {
+    
+    set tcl_precision 4
+    puts [expr $time / 1.0]
+    puts $wfile "$time [$tcp set cwnd_]"
+   #puts $wfile [$tcp set cwnd_]
+}
+
 TestSuite instproc maketraffic {} {
-    $self instvar ns_ node_ testName_ net_ tinterval_ 
+    $self instvar ns_ node_ testName_ net_ tinterval_
+    set winfile [open tcpwind.txt w]
     set stoptime  50
 
     set fmon [$self setMonitor $node_(r1) $node_(r2)]
@@ -275,14 +285,14 @@ TestSuite instproc maketraffic {} {
     #set ftp2 [$tcp2 attach-app FTP]
     #set ftp3 [$tcp3 attach-app FTP]
 
-    set num 2
+    set num 30
     for {set i 0} {$i < $num} {incr i} {
         set pa [new Application/Traffic/MyPareto]
         $pa set packetSize_ 500
         $pa set burst_time_ 320ms
         $pa set idle_time_ 1197ms
         $pa set rate_ 200Kb
-        $pa set shape_ 1.2
+        $pa set shape_ 1.8
         $pa attach-agent $tcp1
         $ns_ at 0.0 "$pa start"
 
@@ -291,18 +301,10 @@ TestSuite instproc maketraffic {} {
         $pa2 set burst_time_ 320ms
         $pa2 set idle_time_ 1197ms
         $pa2 set rate_ 200Kb
-        $pa2 set shape_ 1.2
+        $pa2 set shape_ 1.8
         $pa2 attach-agent $tcp2
         $ns_ at 0.0 "$pa2 start"
     }
-            set pa [new Application/Traffic/MyPareto]
-        $pa set packetSize_ 500
-        $pa set burst_time_ 320ms
-        $pa set idle_time_ 1197ms
-        $pa set rate_ 200Kb
-        $pa set shape_ 1.2
-        $pa attach-agent $tcp1
-        $ns_ at 0.0 "$pa start"
 
     $self enable_tracequeue $ns_
     #$ns_ at 0.0 "$ftp1 start"
@@ -321,11 +323,20 @@ TestSuite instproc maketraffic {} {
     #$self traceQueues $node_(r1) [$self openTrace $stoptime $testName_]
     $ns_ at $stoptime "$self cleanupAll $testName_"
 
+    
     set mytq [[$ns_ link $node_(r1) $node_(r2)] queue]
     set mytq2 [[$ns_ link $node_(r2) $node_(s3)] queue]
     for {set i 0} {$i < $stoptime} {set i [expr $i+$tinterval_]} {
         $ns_ at $i "$mytq over"
         $ns_ at $i "$mytq2 putTime"
+        #puts "$i [$tcp1 set cwnd_]"
+        #$ns_ at $i "$tcp1 checkw"
+        $ns_ at $i "$self checkwind $tcp1 $winfile $i"
+    }
+
+    for {set i 0} {$i < $stoptime} {set i [expr $i + 0.01]} {
+        set tcl_precision 4
+        $ns_ at $i "$self checkwind $tcp1 $winfile $i"
     }
 }
 

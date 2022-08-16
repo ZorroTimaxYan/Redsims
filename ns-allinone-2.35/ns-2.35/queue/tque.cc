@@ -24,12 +24,9 @@ protected :
 	int pktcnt_pers; //每秒入队包数
 	int pktcnt; //总包数
 	int count; //统计个数
-	ofstream ftimedelay1; //输出时延统计
-	ofstream ftimedelay2; //输出时延统计仅仅有数值
 	ofstream fperpkt; //输出间隔内入队包数
-
-	int pktcnt_pers_td;//每间隔包数，时延统计
-	double timeDelay;
+	ofstream test_itv; //输出包之间的时间间隔
+	double tin; //统计两个包之间的时间间隔
 
 };
 
@@ -43,42 +40,48 @@ public :
 } class_tque;
 
 Tque::Tque() {
-	mytime = 0.01;
+	mytime = 0;
 	pktcnt_pers = 0;
 	count = 0;
-	ftimedelay1.open("/home/yzr/common/mywork/tq_td.txt",ios::out);
-	ftimedelay2.open("/home/yzr/common/mywork/tq_td_d.txt",ios::out);
 	fperpkt.open("/home/yzr/common/mywork/perpkt_d.txt",ios::out);
+	test_itv.open("/home/yzr/common/mywork/interval.txt",ios::out);
 
-	pktcnt_pers_td = 0;
-	timeDelay = 0;
+	tin = -1;
 }
 Tque::~Tque(){
 	delete q_;
 }
 
 void Tque::enque(Packet *pkt) {
-	pktcnt_pers_td++;
 	double t = Scheduler::instance().clock();
+	hdr_cmn* mych = hdr_cmn::access(pkt);
+	hdr_ip* myiph = hdr_ip::access(pkt);
+	// if(mych->ptype() == 0 )
+	//printf("sd=%d dd=%d time=%lf  ptype=%d\n",myiph->saddr(), myiph->daddr(), (t-mych->timestamp()),  mych->ptype());
 
-	hdr_cmn *ch= hdr_cmn::access(pkt);
-	// if(linkflag == 1){
-	// 	cout << t-ch->ts_ <<endl;
-	// }
 	q_->enque(pkt);
-	timeDelay += t-ch->ts_;
-	//if(linkflag ==1) {
-		pktcnt++;
-		pktcnt_pers++;
 
-	//}
+	if(mych->ptype() == 28){
+		if(tin != -1 ) {
+			
+			test_itv << t-tin << endl;
+		}
+		tin = t;	
+	}
+	pktcnt++;
+	pktcnt_pers++;
 
 
-	mytime += 10;
+
+	if(t >= mytime) {
+		printf("%lf\n",t);
+		mytime += 10;
+	}
+	
 	//outfile1 << t << " " << pktcnt_pers << endl;
 	//outfile2 <<  pktcnt_pers << endl;
 	//pktcnt_pers = 0;
-	//printf("%lf\n",t);
+
 }
 
 Packet *Tque::deque() {
@@ -101,22 +104,6 @@ void Tque::totalpkt() {
 	//}
 }
 
-void Tque::putTd() {
-	double t = Scheduler::instance().clock();
-	double data;
-	if(pktcnt_pers_td != 0) {
-		data = timeDelay/pktcnt_pers_td;
-		//cout << timeDelay <<endl;
-
-	}else{
-		data = 0;
-	}
-	ftimedelay1 << t << " " << data << endl;
-	ftimedelay2<< data << endl;
-	timeDelay = 0;
-	pktcnt_pers_td = 0;
-}
-
 int Tque::command(int argc, const char*const* argv)
 {
 	if (argc==2) {
@@ -126,9 +113,6 @@ int Tque::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		} else if (strcmp(argv[1], "totalpkt") == 0) {
 			totalpkt();
-			return (TCL_OK);
-		} else if (strcmp(argv[1], "getTd") == 0) {
-			putTd();
 			return (TCL_OK);
 		}
 
