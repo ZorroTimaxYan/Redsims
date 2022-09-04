@@ -4,6 +4,7 @@ static char code[] = "\n\
 \n\
 \n\
 \n\
+\n\
 proc warn {msg} {\n\
 global warned_\n\
 if {![info exists warned_($msg)]} {\n\
@@ -2004,6 +2005,12 @@ $dst add-iif [$iif_ label] $self\n\
 SimpleLink instproc bw {} { \n\
 $self instvar link_\n\
 $link_ set bandwidth_ \n\
+\n\
+}\n\
+\n\
+SimpleLink instproc resetbw { bw } { \n\
+$self instvar link_\n\
+$link_ set bandwidth_ $bw\n\
 \n\
 }\n\
 \n\
@@ -18916,7 +18923,9 @@ Queue/RED set targetdelay_ 0.005\n\
 Queue/RED set top_ 0.5\n\
 Queue/RED set bottom_ 0\n\
 Queue/RED set pared_ 0\n\
-Queue/RED set hared_ 0\n\
+Queue/RED set hared_ 0 \n\
+Queue/RED set fared_ 0\n\
+Queue/RED set Ctn1_ 300\n\
 Queue/RED set pertime_ 0.2\n\
 Queue/RED set cautious_ 0\n\
 Queue/RED set feng_adaptive_ 0\n\
@@ -22632,7 +22641,6 @@ foreach i $lagent {\n\
 $i stop\n\
 }\n\
 }\n\
-\n\
 \n\
 Simulator instproc attach-diffapp { node diffapp } {\n\
 $diffapp dr [$node get-dr]\n\

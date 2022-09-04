@@ -153,6 +153,8 @@ REDQueue::REDQueue(const char * trace) : link_(NULL), de_drop_(NULL), EDTrace(NU
 	
 	bind("pared_", &pared);
 	bind("hared_", &hared);
+	bind("fared_", &fared);
+	bind("Ctn1_", &Ctn1);
 	bind("pertime_", &pertime_);
 
 	q_ = new PacketQueue();			    // underlying queue
@@ -210,7 +212,6 @@ void REDQueue::initialize_params()
 	} else if (edp_.q_w == -2.0) {
 		edp_.q_w = 1.0 - exp(-10.0/edp_.ptc);
 	}
-	printf("wq=%lf\n", edp_.q_w);
 	//cout << "wq=" << edp_.q_w << endl;
 	// printf("ptc: %7.5f bandwidth: %5.3f pktsize: %d\n", edp_.ptc, link_->bandwidth(), edp_.mean_pktsize);
         // printf("th_min_pkts: %7.5f th_max_pkts: %7.5f\n", edp_.th_min_pkts, edp_.th_max);
@@ -287,6 +288,7 @@ D1=4.60072 ;
 	pktcnt_pers_tp = 0;
 	pktcnt_pers_td = 0;
 	pktcnt_pers_maxp = 0;
+	pktcnt_pers_F = 0;
 	drop_cnt_pers = 0;
 	tp_cnt_pers = 0;
 	timeDelay_pers = 0;
@@ -302,6 +304,7 @@ D1=4.60072 ;
 		wk1[i] = 0;
 	}
 	tin = -1;
+	ifinit = 0;
 	cout.precision(6);
 	test_itv.open("/home/yzr/common/papersims/yzr_interval.txt",ios::out);
 	fperpkt1.open("/home/yzr/common/papersims/yzr_perpkt.txt",ios::out);
@@ -480,22 +483,22 @@ double REDQueue::getLevel() {
 	//printf("pktcnt_pers_level=%d\n",pktcnt_pers_level);
 	//printf("t=%lf\n",t);
 	if(pktcnt_pers_level < E1-3*D1) {
-		level = scale[0];
+		level = 1;
 
 	}else if (pktcnt_pers_level >= E1-3*D1 && pktcnt_pers_level < E1-2*D1) {
-		level = scale[1];
+		level = 2;
 	}else if (pktcnt_pers_level >= E1-2*D1 && pktcnt_pers_level < E1-D1) {
-		level = scale[2];
+		level = 3;
 	}else if (pktcnt_pers_level >= E1-D1 && pktcnt_pers_level < E1) {
-		level = scale[3];
+		level = 4;
 	}else if (pktcnt_pers_level >= E1 && pktcnt_pers_level < E1+D1) {
-		level = scale[4];
+		level = 5;
 	}else if (pktcnt_pers_level >= E1+D1 && pktcnt_pers_level < E1+2*D1) {
-		level = scale[5];
+		level = 6;
 	}else if (pktcnt_pers_level >= E1+2*D1 && pktcnt_pers_level < E1+3*D1) {
-		level = scale[6];
+		level = 7;
 	}else if (pktcnt_pers_level >= E1+3*D1) {
-		level = scale[7];
+		level = 8;
 	}
 
 	pktcnt_pers_level = 0;
@@ -562,6 +565,10 @@ double REDQueue::estimator(int nqueued, int m, double ave, double q_w)
 			updateMaxP(new_ave, now);
 	}
 	if(pared == 1){
+			updateMaxPYZR(new_ave, now);
+
+	}
+	if(pared == 2){
 		if(now > edv_.lastset +  pertime_){
 			updateMaxPYZR(new_ave, now);
 		}
@@ -590,6 +597,23 @@ double REDQueue::estimator_P(int nqueued, int m, double ave, double q_w, double 
 	return new_ave;
 }
 
+double  REDQueue::estimator_F(int nqueued, double ave, double q_w, double now)
+{
+	int level = getLevel();
+	double new_ave = 0;
+	double Atn1 = pktcnt_pers_F * scale[level-1] /level;
+	double Qtn1 = max((nqueued + Atn1 - Ctn1*0.1), 0);
+
+	double avgt1 = (1-q_w) * ave + q_w * nqueued;
+	avgtn1 = (1-q_w) * avgt1 + q_w * Qtn1;
+
+	new_ave = avgt1;
+	
+	updateMaxPYZR(avgtn1, now);
+
+	return new_ave;
+}
+
 /*
  * Return the next packet in the queue for transmission.
  */
@@ -606,14 +630,14 @@ Packet* REDQueue::deque()
 		double t = Scheduler::instance().clock();
 		hdr_cmn* ch = hdr_cmn::access(p);
 		//hdr_ip* iph = hdr_ip::access(p);
-		
-			pktcnt_pers_td++;
+		if(ch->ptype() == 28 ){
 			pktcnt_pers_tp++;
-			tp_cnt_pers++;
+			tp_cnt_pers += ch->size();
+			//printf("包大小=%d\n",ch->size());
+			pktcnt_pers_td++;
 			timeDelay_pers += t-ch->timestamp();
-			// if(t-ch->timestamp() < 0.025){
-			// 	printf("sport=%ld dport=%ld time=%lf\n",iph->saddr(), iph->daddr(), (t-ch->timestamp())); 
-			// }
+		}
+
 		
 	} else {
 		idle_ = 1;
@@ -739,6 +763,7 @@ REDQueue::drop_early(Packet* pkt)
 		}
 	}
 	double u = Random::uniform();
+
 	if (edp_.cautious == 2) {
                 // Decrease the drop probability if the instantaneous
 		//   queue is much below the average.
@@ -769,6 +794,18 @@ REDQueue::drop_early(Packet* pkt)
 		}
 	}
 	return (0);			// no DROP/mark
+}
+
+int REDQueue::drop_early_F()
+{
+
+	double u = Random::uniform();
+	double pb = edv_.cur_max_p * (avgtn1 - edp_.th_min) / (edp_.th_max - edp_.th_min);
+	if(u <= pb) {
+		return 1;
+	}else {
+		return 0;
+	}
 }
 
 /*
@@ -828,15 +865,18 @@ REDQueue::pickPacketToDrop()
 void REDQueue::enque(Packet* pkt)
 {
 	hdr_cmn* mych;
-	// double t = Scheduler::instance().clock();
+	double t = Scheduler::instance().clock();
 	mych = hdr_cmn::access(pkt);
 	hdr_ip* myiph = hdr_ip::access(pkt);
-	// if(mych->ptype() == 0 )
-	// printf("sd=%d dd=%d time=%lf  ptype=%d\n",myiph->saddr(), myiph->daddr(), (t-mych->timestamp()),  mych->ptype());
-	pktcnt_pers_lp++;
-	pktcnt_pers++;
-	pktcnt_pers_level++;
-	pktcnt_pers_maxp++;
+	if(mych->ptype() == 28 ){
+		//printf("sd=%d dd=%d time=%lf  ptype=%d\n",myiph->saddr(), myiph->daddr(), (t-mych->timestamp()),  mych->ptype());
+		pktcnt_pers_lp++;
+		pktcnt_pers++;
+		pktcnt_pers_level++;
+		pktcnt_pers_maxp++;
+		pktcnt_pers_F++;
+	}
+
 
 	//记录包之间时间间隔
 	double tnow = Scheduler::instance().clock();
@@ -881,16 +921,24 @@ void REDQueue::enque(Packet* pkt)
 	 *  qib_ 默认是true,
 	*/
 
-	if(pared == 1){
+	// if(pared == 1){
+	// 	double enow = Scheduler::instance().clock();
+	// 	if(enow > edv_.lastset + pertime_){
+	// 		edv_.v_ave = estimator_P(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, 0.045, enow);
+	// 	}
+	// }else{
+	// 	edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
+	// }
+	if(fared == 1){
 		double enow = Scheduler::instance().clock();
 		if(enow > edv_.lastset + pertime_){
-			edv_.v_ave = estimator_P(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, 0.008, enow);
+			edv_.v_ave = estimator_F(qib_ ? q_->byteLength() : q_->length(), edv_.v_ave, 0.045, enow);
 		}
-	}else{
+		
+	} else {
 		edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
 	}
 	
-	//edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
 
 	//printf("v_ave: %6.4f (%13.12f) q: %d)\n", 
 	//	double(edv_.v_ave), double(edv_.v_ave), q_->length());
@@ -922,7 +970,6 @@ void REDQueue::enque(Packet* pkt)
 	int qlim = qib_ ? (qlim_ * edp_.mean_pktsize) : qlim_;
 
 	curq_ = qlen;	// helps to trace queue during arrival, if enabled
-
 	if (qavg >= edp_.th_min && qlen > 1) {
 		if (!edp_.use_mark_p && 
 			((!edp_.gentle && qavg >= edp_.th_max) ||
@@ -946,9 +993,26 @@ void REDQueue::enque(Packet* pkt)
 		edv_.v_prob = 0.0;
 		edv_.old = 0;		
 	}
+
 	if (qlen >= qlim) {
 		// see if we've exceeded the queue size
 		droptype = DTYPE_FORCED;
+	}
+
+	//Fared计算丢弃开率pb
+	if(fared == 1) {
+		if (avgtn1 < edp_.th_min) {
+			droptype = DTYPE_NONE;
+		}else if (avgtn1 > edp_.th_max) {
+			droptype = DTYPE_FORCED;
+		} else {
+			if(drop_early_F()){
+				droptype = DTYPE_FORCED;
+			}else{
+				droptype = DTYPE_NONE;
+			}
+			
+		}
 	}
 
 	if (droptype == DTYPE_UNFORCED) {
@@ -975,8 +1039,8 @@ void REDQueue::enque(Packet* pkt)
 
 			reportDrop(pkt);
 			de_drop_->recv(pkt);
-		}
-		else {
+
+		}else {
 			mych = hdr_cmn::access(pkt);
 			reportDrop(pkt);
 			drop(pkt);
@@ -1050,7 +1114,7 @@ int REDQueue::command(int argc, const char*const* argv)
 		}
 		if (strcmp(argv[1], "over") == 0) {
  			putDroprate();
-			putThroughput();
+			putThroughput_bit();
 			//putTimedelay();
 			putArrival();
  			return (TCL_OK);
@@ -1281,6 +1345,22 @@ void REDQueue::putThroughput() {
 	pktcnt_pers_tp = 0;
 }
 
+//输出吞吐量到文件
+void REDQueue::putThroughput_bit() {
+	double t = Scheduler::instance().clock();
+	double data;
+	
+	if(pktcnt_pers_tp != 0) {
+		data = double(tp_cnt_pers)/pertime_;
+	}else{
+		data = 0;
+	}
+	fthroughput1 << t << " " << data << endl;
+	fthroughput2 << data << endl;
+	tp_cnt_pers = 0;
+	pktcnt_pers_tp = 0;
+}
+
 //输出时延到文件
 void REDQueue::putTimedelay() {
 	
@@ -1297,3 +1377,9 @@ void REDQueue::putTimedelay() {
 	timeDelay_pers = 0;
 	pktcnt_pers_td = 0;
 }
+
+//预测流量函数
+/*void REDQueue::forecast_traf() {
+	double level = getLevel();
+	double pktcnt = pktcnt_pers_new*
+}*/

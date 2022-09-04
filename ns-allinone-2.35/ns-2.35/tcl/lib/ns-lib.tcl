@@ -1,3 +1,4 @@
+
 # -*-	Mode:tcl; tcl-indent-level:8; tab-width:8; indent-tabs-mode:t -*-
 #
 # Copyright (c) 1996 Regents of the University of California.
@@ -2327,4 +2328,3 @@ Simulator instproc prepare-to-stop {} {
 		$i stop
 	}
 }
-    

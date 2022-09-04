@@ -1,9 +1,1 @@
-exec xgraph -x time -y packets /home/yzr/common/mywork/dt_perpkt.txt -geometry 1600x800 &
-
-
-
-
-
-
-
-
+exec xgraph -bb -tk -x time -y queue temp.queue &

@@ -247,6 +247,12 @@ SimpleLink instproc bw {} {
 
 }
 
+SimpleLink instproc resetbw { bw } { 
+	$self instvar link_
+	$link_ set bandwidth_ $bw
+
+}
+
 SimpleLink instproc delay {} {
         $self instvar link_
         $link_ set delay_

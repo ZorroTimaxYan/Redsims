@@ -66,6 +66,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 using namespace std;
 
@@ -224,11 +225,16 @@ class REDQueue : public Queue {
 	void putArrival();
 	void putDroprate();
 	void putThroughput();
+	void putThroughput_bit();
 	void putTimedelay();
 	double getLevel();
 	void updateMaxPYZR(double new_ave, double now);
 	void updateMaxP_H(double new_ave, double now);
+	void updateMaxP_NEW(double new_ave, double now);
 	double estimator_P(int nqueued, int m, double ave, double q_w, double now);
+	double estimator_F(int nqueued, double ave, double q_w, double now);
+	int drop_early_F();
+	void forecast_traf(); //预测流量
 	ofstream fperpkt1; //输出间隔内入队包数
 	ofstream fperpkt2; //输出间隔内入队包数，仅有数值
 	ofstream flosspkt1; //输出平均丢包率
@@ -245,20 +251,26 @@ class REDQueue : public Queue {
 	int pktcnt_pers; //每个时间间隔内入队包数，统计到达包数哦嗯
 	int pktcnt_pers_level; //每个时间间隔内入队包数，计算等级用
 	int pktcnt_pers_maxp; //hared计算maxp时用到
+	int pktcnt_pers_F; //新算法统计数据包
 	int drop_cnt_pers; //每时间间隔内丢包数
 	int tp_cnt_pers; //每时间间隔内吞吐量
 	double pertime_; //时间间隔
 	double timeDelay_pers;//每时间间隔内数据包时延
 	double E1; //均值
 	double D1; //方差
-	int pared; //1表示是pared
+	int pared; //1表示是原pared,2表示等间隔pared
 	double *scale; //转移等级刻度
 	int hared; //1表示是hared
+	int fared; //1表示时fared
 	double ek[3]; //hared参数
 	double xk[9]; //hared参数
 	double yk[9]; //hared参数
 	double wk[9]; //hared参数
 	double wk1[9]; //hared参数
+	double last_level; //新算法计算等级
+	double Ctn1;
+	double avgtn1; //fared 的上一次预测平均队列长度
+	int ifinit; //读写文件是否初始化
 
 };
 

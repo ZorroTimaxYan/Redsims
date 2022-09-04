@@ -37,6 +37,7 @@
 
 #include "agent.h"
 #include "packet.h"
+#include <fstream>
 
 //class EventTrace;
 
@@ -269,6 +270,7 @@ protected:
 	 * srtt and rttvar are stored as fixed point;
 	 * srtt has 3 bits to the right of the binary point, rttvar has 2.
 	 */
+	int myrtt_;
 	TracedInt t_rtt_;      	/* round trip time */
 	TracedInt t_srtt_;     	/* smoothed round-trip time */
 	TracedInt t_rttvar_;   	/* variance in round-trip time */

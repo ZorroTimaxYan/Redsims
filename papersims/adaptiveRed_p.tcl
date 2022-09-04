@@ -90,7 +90,7 @@ Topology/net2 instproc init ns {
 
     $ns duplex-link $node_(s1) $node_(r1) 10Mb 2ms DropTail
     $ns duplex-link $node_(s2) $node_(r1) 10Mb 3ms DropTail
-    $ns duplex-link $node_(r1) $node_(r2) 1.5Mb 20ms RED
+    $ns duplex-link $node_(r1) $node_(r2) 1Mb 20ms RED
     #限制包数为35
     $ns queue-limit $node_(r1) $node_(r2) 35 
     $ns queue-limit $node_(r2) $node_(r1) 35
@@ -99,7 +99,7 @@ Topology/net2 instproc init ns {
     $ns duplex-link $node_(r2) $node_(s3) 10Mb 4ms DropTailT
     $ns duplex-link $node_(s4) $node_(r2) 10Mb 5ms DropTail
 
-}   
+}
 
 Class Topology/net3 -superclass Topology
 Topology/net3 instproc init ns {
@@ -208,11 +208,11 @@ TestSuite instproc plotQueue file {
     close $f4
     if {$quiet == "false"} {
         #puts aaa
-        # exec xgraph -bb -tk -x time -y queue temp.queue &
-        # exec xgraph -bb -tk -x time -y rate temp.dr &
-        # exec xgraph -bb -tk -x time -y packets/s temp.tp &
-        # exec xgraph -x time -y ms temp.td &
-        # exec xgraph -x time -y packets temp.per &
+        exec xgraph -bb -tk -x time -y queue temp.queue &
+        exec xgraph -bb -tk -x time -y rate temp.dr &
+        exec xgraph -bb -tk -x time -y packets/s temp.tp &
+        exec xgraph -x time -y ms temp.td &
+        exec xgraph -x time -y packets temp.per &
         #exec xgraph -x time -y windows tcpwind.txt &
         if {$file == "transient" || $file == "transient1" || 
             $file == "transient2" } {
@@ -258,16 +258,19 @@ TestSuite instproc setTopo {} {
 }
 
 TestSuite instproc checkwind { tcp wfile time } {
-    
-    set tcl_precision 4
-    puts [expr $time / 1.0]
-    puts $wfile "$time [$tcp set cwnd_]"
-   #puts $wfile [$tcp set cwnd_]
+   # puts $wfile "$time [$tcp set cwnd_]"
+    puts $wfile [$tcp set cwnd_]
+}
+
+TestSuite instproc checkrtt { tcp wfile time } {
+   # puts $wfile "$time [$tcp set rtt_]"
+    puts $wfile [$tcp set myrtt_]
 }
 
 TestSuite instproc maketraffic {} {
     $self instvar ns_ node_ testName_ net_ tinterval_
-    set winfile [open tcpwind.txt w]
+    set winfile1 [open tcpwind.txt w]
+    set winfile2 [open tcprtt.txt w]
     set stoptime  50
 
     set fmon [$self setMonitor $node_(r1) $node_(r2)]
@@ -278,21 +281,21 @@ TestSuite instproc maketraffic {} {
     set tcp2 [$ns_ create-connection TCP/Sack1 $node_(s2) TCPSink/Sack1 $node_(s3) 1]
     $tcp2 set window_ 15
 
-    # set tcp3 [$ns_ create-connection TCP/Sack1 $node_(s3) TCPSink/Sack1 $node_(s1) 3]
-    # $tcp3 set window_ 15
+    set tcp3 [$ns_ create-connection TCP/Sack1 $node_(s3) TCPSink/Sack1 $node_(s1) 3]
+    $tcp3 set window_ 15
 
     #set ftp1 [$tcp1 attach-app FTP]
     #set ftp2 [$tcp2 attach-app FTP]
-    #set ftp3 [$tcp3 attach-app FTP]
+    set ftp3 [$tcp3 attach-app FTP]
 
-    set num 30
+    set num 15
     for {set i 0} {$i < $num} {incr i} {
         set pa [new Application/Traffic/MyPareto]
         $pa set packetSize_ 500
         $pa set burst_time_ 320ms
         $pa set idle_time_ 1197ms
         $pa set rate_ 200Kb
-        $pa set shape_ 1.8
+        $pa set shape_ 1.2
         $pa attach-agent $tcp1
         $ns_ at 0.0 "$pa start"
 
@@ -301,7 +304,7 @@ TestSuite instproc maketraffic {} {
         $pa2 set burst_time_ 320ms
         $pa2 set idle_time_ 1197ms
         $pa2 set rate_ 200Kb
-        $pa2 set shape_ 1.8
+        $pa2 set shape_ 1.2
         $pa2 attach-agent $tcp2
         $ns_ at 0.0 "$pa2 start"
     }
@@ -309,7 +312,7 @@ TestSuite instproc maketraffic {} {
     $self enable_tracequeue $ns_
     #$ns_ at 0.0 "$ftp1 start"
     #$ns_ at 3.0 "$ftp2 start" 
-    #$ns_ at 1.0 "$ftp3 start"
+    $ns_ at 1.0 "$ftp3 start"
     set halftime [expr $stoptime / 2]
     $ns_ at $halftime "printall $fmon $stoptime 1.5"
     $ns_ at $stoptime "printall $fmon $stoptime 1.5"
@@ -322,22 +325,22 @@ TestSuite instproc maketraffic {} {
     # trace only the bottleneck link
     #$self traceQueues $node_(r1) [$self openTrace $stoptime $testName_]
     $ns_ at $stoptime "$self cleanupAll $testName_"
-
-    
+ 
+    set mylk [$ns_ link $node_(r1) $node_(r2)]
+    $ns_ at 0 "$mylk resetbw 1.5Mb"
+    $ns_ at 20 "$mylk resetbw 3Mb"
     set mytq [[$ns_ link $node_(r1) $node_(r2)] queue]
+    $ns_ at 20 "$mytq set Ctn1_ 375000"
     set mytq2 [[$ns_ link $node_(r2) $node_(s3)] queue]
     for {set i 0} {$i < $stoptime} {set i [expr $i+$tinterval_]} {
         $ns_ at $i "$mytq over"
         $ns_ at $i "$mytq2 putTime"
-        #puts "$i [$tcp1 set cwnd_]"
-        #$ns_ at $i "$tcp1 checkw"
-        $ns_ at $i "$self checkwind $tcp1 $winfile $i"
     }
 
-    for {set i 0} {$i < $stoptime} {set i [expr $i + 0.01]} {
-        set tcl_precision 4
-        $ns_ at $i "$self checkwind $tcp1 $winfile $i"
-    }
+    # for {set i 0} {$i < $stoptime} {set i [expr $i + 0.001]} {
+    #     $ns_ at $i "$self checkwind $tcp1 $winfile1 $i"
+    #     $ns_ at $i "$self checkrtt $tcp1 $winfile2 $i"
+    # }
 }
 
 #####################################################################
@@ -427,7 +430,7 @@ Test/red2Padapt instproc init {} {
     $self instvar net_ test_ ns_ tinterval_
     set net_ net2 
     set test_ red2Padapt
-    set tinterval_ 0.5
+    set tinterval_ 0.1
     Queue/RED set pared_ 1
     Queue/RED set pertime_ $tinterval_
     Test/red2Padapt instproc run {} [Test/red2 info instbody run]
@@ -443,6 +446,19 @@ Test/red2Hadapt instproc init {} {
     Queue/RED set hared_ 1
     Queue/RED set pertime_ $tinterval_
     Test/red2Hadapt instproc run {} [Test/red2 info instbody run]
+    $self next
+}
+
+Class Test/red2Fadapt -superclass TestSuite
+Test/red2Fadapt instproc init {} {
+    $self instvar net_ test_ ns_ tinterval_
+    set net_ net2 
+    set test_ red2Fadapt
+    set tinterval_ 0.1
+    Queue/RED set fared_ 1
+    Queue/RED set Ctn1_ 187500
+    Queue/RED set pertime_ $tinterval_
+    Test/red2Fadapt instproc run {} [Test/red2 info instbody run]
     $self next
 }
 

@@ -165,7 +165,9 @@ Queue/RED set targetdelay_ 0.005
 Queue/RED set top_ 0.5
 Queue/RED set bottom_ 0
 Queue/RED set pared_ 0
-Queue/RED set hared_ 0
+Queue/RED set hared_ 0 
+Queue/RED set fared_ 0
+Queue/RED set Ctn1_ 300
 Queue/RED set pertime_ 0.2
 ### Queue/RED/bottom_ was changed from 0.01 to 0 on June 23, 2004,
 ###   for automatic configuration.
