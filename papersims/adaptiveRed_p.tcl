@@ -92,7 +92,7 @@ Topology/net2 instproc init ns {
     $ns duplex-link $node_(s2) $node_(r1) 10Mb 3ms DropTail
     $ns duplex-link $node_(r1) $node_(r2) 1Mb 20ms RED
     #限制包数为35
-    $ns queue-limit $node_(r1) $node_(r2) 35 
+    $ns queue-limit $node_(r1) $node_(r2) 35
     $ns queue-limit $node_(r2) $node_(r1) 35
     # A 1500-byte packet has a transmission time of 0.008 seconds.
     # A queue of 25 1500-byte packets would be 0.2 seconds. 
@@ -257,20 +257,8 @@ TestSuite instproc setTopo {} {
 
 }
 
-TestSuite instproc checkwind { tcp wfile time } {
-   # puts $wfile "$time [$tcp set cwnd_]"
-    puts $wfile [$tcp set cwnd_]
-}
-
-TestSuite instproc checkrtt { tcp wfile time } {
-   # puts $wfile "$time [$tcp set rtt_]"
-    puts $wfile [$tcp set myrtt_]
-}
-
 TestSuite instproc maketraffic {} {
     $self instvar ns_ node_ testName_ net_ tinterval_
-    set winfile1 [open tcpwind.txt w]
-    set winfile2 [open tcprtt.txt w]
     set stoptime  50
 
     set fmon [$self setMonitor $node_(r1) $node_(r2)]
@@ -336,11 +324,6 @@ TestSuite instproc maketraffic {} {
         $ns_ at $i "$mytq over"
         $ns_ at $i "$mytq2 putTime"
     }
-
-    # for {set i 0} {$i < $stoptime} {set i [expr $i + 0.001]} {
-    #     $ns_ at $i "$self checkwind $tcp1 $winfile1 $i"
-    #     $ns_ at $i "$self checkrtt $tcp1 $winfile2 $i"
-    # }
 }
 
 #####################################################################

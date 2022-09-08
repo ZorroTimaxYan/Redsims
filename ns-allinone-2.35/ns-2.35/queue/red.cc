@@ -305,6 +305,7 @@ D1=4.60072 ;
 	}
 	tin = -1;
 	ifinit = 0;
+	mmax = 0;
 	cout.precision(6);
 	test_itv.open("/home/yzr/common/papersims/yzr_interval.txt",ios::out);
 	fperpkt1.open("/home/yzr/common/papersims/yzr_perpkt.txt",ios::out);
@@ -877,7 +878,6 @@ void REDQueue::enque(Packet* pkt)
 		pktcnt_pers_F++;
 	}
 
-
 	//记录包之间时间间隔
 	double tnow = Scheduler::instance().clock();
 	if(mych->ptype() == 28){
@@ -929,6 +929,7 @@ void REDQueue::enque(Packet* pkt)
 	// }else{
 	// 	edv_.v_ave = estimator(qib_ ? q_->byteLength() : q_->length(), m + 1, edv_.v_ave, edp_.q_w);
 	// }
+
 	if(fared == 1){
 		double enow = Scheduler::instance().clock();
 		if(enow > edv_.lastset + pertime_){
@@ -994,11 +995,6 @@ void REDQueue::enque(Packet* pkt)
 		edv_.old = 0;		
 	}
 
-	if (qlen >= qlim) {
-		// see if we've exceeded the queue size
-		droptype = DTYPE_FORCED;
-	}
-
 	//Fared计算丢弃开率pb
 	if(fared == 1) {
 		if (avgtn1 < edp_.th_min) {
@@ -1013,6 +1009,10 @@ void REDQueue::enque(Packet* pkt)
 			}
 			
 		}
+	}
+	if (qlen >= qlim) {
+		// see if we've exceeded the queue size
+		droptype = DTYPE_FORCED;
 	}
 
 	if (droptype == DTYPE_UNFORCED) {

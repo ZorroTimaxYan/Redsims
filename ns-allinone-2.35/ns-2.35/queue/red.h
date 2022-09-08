@@ -272,6 +272,8 @@ class REDQueue : public Queue {
 	double avgtn1; //fared 的上一次预测平均队列长度
 	int ifinit; //读写文件是否初始化
 
+	int mmax; // 计数最大值
+
 };
 
 #endif

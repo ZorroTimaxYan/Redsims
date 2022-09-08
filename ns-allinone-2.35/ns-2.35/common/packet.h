@@ -501,8 +501,6 @@ public:
 	double gtime;
 
 	Packet() : bits_(0), data_(0), ref_count_(0), next_(0) {
-		double now = Scheduler::instance().clock();
-		printf("now = %lf", now);
 	}
 	inline double getGtime() {return (gtime); }
 	inline unsigned char* bits() { return (bits_); }

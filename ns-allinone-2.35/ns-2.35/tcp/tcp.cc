@@ -78,7 +78,6 @@ TcpAgent::TcpAgent()
           use_rtt_(0), qs_requested_(0), qs_approved_(0),
 	  qs_window_(0), qs_cwnd_(0), frto_(0)
 {
-    bind("myrtt_", &myrtt_);
 #ifdef TCP_DELAY_BIND_ALL
         // defined since Dec 1999.
 #else /* ! TCP_DELAY_BIND_ALL */
@@ -687,7 +686,7 @@ void TcpAgent::output(int seqno, int reason)
 	tcph->ts_echo() = ts_peer_;
 	tcph->reason() = reason;
 	tcph->last_rtt() = int(int(t_rtt_)*tcp_tick_*1000);
-    myrtt_ = tcph->last_rtt();
+
 	if (ecn_) {
 		hf->ect() = 1;	// ECN-capable transport
 	}
