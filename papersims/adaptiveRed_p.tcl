@@ -268,14 +268,14 @@ TestSuite instproc maketraffic {} {
     set tcp2 [$ns_ create-connection TCP/Sack1 $node_(s2) TCPSink/Sack1 $node_(s3) 1]
     $tcp2 set window_ 15
 
-    # set tcp3 [$ns_ create-connection TCP/Sack1 $node_(s3) TCPSink/Sack1 $node_(s1) 3]
-    # $tcp3 set window_ 15
+    set tcp3 [$ns_ create-connection TCP/Sack1 $node_(s3) TCPSink/Sack1 $node_(s1) 3]
+    $tcp3 set window_ 15
 
     #set ftp1 [$tcp1 attach-app FTP]
     #set ftp2 [$tcp2 attach-app FTP]
-    #set ftp3 [$tcp3 attach-app FTP]
+    set ftp3 [$tcp3 attach-app FTP]
 
-    set num 2
+    set num 15
     for {set i 0} {$i < $num} {incr i} {
         set pa [new Application/Traffic/MyPareto]
         $pa set packetSize_ 500
@@ -295,19 +295,12 @@ TestSuite instproc maketraffic {} {
         $pa2 attach-agent $tcp2
         $ns_ at 0.0 "$pa2 start"
     }
-            set pa [new Application/Traffic/MyPareto]
-        $pa set packetSize_ 500
-        $pa set burst_time_ 320ms
-        $pa set idle_time_ 1197ms
-        $pa set rate_ 200Kb
-        $pa set shape_ 1.2
-        $pa attach-agent $tcp1
-        $ns_ at 0.0 "$pa start"
+
 
     $self enable_tracequeue $ns_
     #$ns_ at 0.0 "$ftp1 start"
     #$ns_ at 3.0 "$ftp2 start" 
-    #$ns_ at 1.0 "$ftp3 start"
+    $ns_ at 1.0 "$ftp3 start"
     set halftime [expr $stoptime / 2]
     $ns_ at $halftime "printall $fmon $stoptime 1.5"
     $ns_ at $stoptime "printall $fmon $stoptime 1.5"

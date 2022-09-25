@@ -477,22 +477,22 @@ double REDQueue::getLevel() {
 	//printf("pktcnt_pers_level=%d\n",pktcnt_pers_level);
 	//printf("t=%lf\n",t);
 	if(pktcnt_pers_level < E1-3*D1) {
-		level = scale[0];
+		level = 1;
 
 	}else if (pktcnt_pers_level >= E1-3*D1 && pktcnt_pers_level < E1-2*D1) {
-		level = scale[1];
+		level = 2;
 	}else if (pktcnt_pers_level >= E1-2*D1 && pktcnt_pers_level < E1-D1) {
-		level = scale[2];
+		level = 3;
 	}else if (pktcnt_pers_level >= E1-D1 && pktcnt_pers_level < E1) {
-		level = scale[3];
+		level = 4;
 	}else if (pktcnt_pers_level >= E1 && pktcnt_pers_level < E1+D1) {
-		level = scale[4];
+		level = 5;
 	}else if (pktcnt_pers_level >= E1+D1 && pktcnt_pers_level < E1+2*D1) {
-		level = scale[5];
+		level = 6;
 	}else if (pktcnt_pers_level >= E1+2*D1 && pktcnt_pers_level < E1+3*D1) {
-		level = scale[6];
+		level = 7;
 	}else if (pktcnt_pers_level >= E1+3*D1) {
-		level = scale[7];
+		level = 8;
 	}
 
 	pktcnt_pers_level = 0;
